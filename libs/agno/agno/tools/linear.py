@@ -17,6 +17,8 @@ class LinearTools(Toolkit):
         get_user_assigned_issues: bool = True,
         get_workflow_issues: bool = True,
         get_high_priority_issues: bool = True,
+        list_teams: bool = True,
+        get_projects: bool = True,
         **kwargs,
     ):
         super().__init__(name="linear tools", **kwargs)
@@ -43,6 +45,10 @@ class LinearTools(Toolkit):
             self.register(self.get_workflow_issues)
         if get_high_priority_issues:
             self.register(self.get_high_priority_issues)
+        if list_teams:
+            self.register(self.list_teams)
+        if get_projects:
+            self.register(self.get_projects)
 
     def _execute_query(self, query, variables=None):
         """Helper method to execute GraphQL queries with optional variables."""
@@ -385,4 +391,90 @@ class LinearTools(Toolkit):
 
         except Exception as e:
             logger.error(f"Error retrieving high-priority issues: {e}")
+            raise
+
+    def list_teams(self) -> Optional[str]:
+        """
+        Fetch all teams accessible by the authenticated user.
+        It will return a list of teams, each with its ID and name.
+
+        Returns:
+            str or None: A string representing the list of teams with their IDs and names.
+                         Returns None if no teams are found or an error occurs.
+
+        Raises:
+            Exception: If an error occurs during the query execution or data retrieval.
+        """
+
+        query = """
+        query Teams {
+          teams {
+            nodes {
+              id
+              name
+            }
+          }
+        }
+        """
+
+        try:
+            response = self._execute_query(query)
+
+            if response and "teams" in response and "nodes" in response["teams"]:
+                teams = response["teams"]["nodes"]
+                if teams:
+                    log_info(f"Retrieved {len(teams)} teams.")
+                    return str(teams)
+                else:
+                    log_info("No teams found for the user.")
+                    return "No teams found."
+            else:
+                logger.error("Failed to retrieve teams or unexpected response structure.")
+                return "Failed to retrieve teams."
+
+        except Exception as e:
+            logger.error(f"Error fetching teams: {e}")
+            raise
+
+    def get_projects(self) -> Optional[str]:
+        """
+        Lists all Linear projects accessible by the authenticated user, providing their ID and name.
+        Use this tool when the user asks to list, show, or get all projects.
+
+        Returns:
+            str or None: A string representation of a list of projects, each containing its 'id' and 'name'.
+                         Returns a message if no projects are found or if an error occurs.
+
+        Raises:
+            Exception: If there is an issue executing the GraphQL query.
+        """
+
+        query = """
+        query Projects {
+          projects {
+            nodes {
+              id
+              name
+            }
+          }
+        }
+        """
+
+        try:
+            response = self._execute_query(query)
+
+            if response and "projects" in response and "nodes" in response["projects"]:
+                projects = response["projects"]["nodes"]
+                if projects:
+                    log_info(f"Retrieved {len(projects)} projects.")
+                    return str(projects)
+                else:
+                    log_info("No projects found for the user.")
+                    return "No projects found."
+            else:
+                logger.error("Failed to retrieve projects or unexpected response structure.")
+                return "Failed to retrieve projects."
+
+        except Exception as e:
+            logger.error(f"Error fetching projects: {e}")
             raise
